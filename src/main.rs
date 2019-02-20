@@ -2,42 +2,50 @@
 
 #[macro_use]
 extern crate rocket;
-use std::process::Command;
+extern crate rpi_led_matrix;
 
-const baseCommand: &str = "./demo";
+// use std::process::Command;
 
-#[get("/<time>")]
-fn tryingStuff(time: String) {
-    let command = format!("echo {}", time);
-    Command::new("sh").arg("-c").arg(command).spawn();
+// use rpi_led_matrix::{LedCanvas, LedColor, LedFont, LedMatrix, LedMatrixOptions};
+
+mod led_matrix;
+mod parse_text;
+
+#[put("/<image>/<duration>")]
+fn display_image(duration: String, image: String) -> &'static str {
+    let command = format!(
+        "sudo /home/pi/rpi-rgb-led-matrix/examples-api-use/demo -t {} /
+        --led-rows=16 --led-chain=3 --led-show-refresh --led-pwm-lsb-nanoseconds 100 /
+        -D 1 /home/pi/images/{}.ppm",
+        duration, image
+    );
+    println!("{}", command);
+    // Command::new("sh").arg("-c").arg(command).spawn();
+    "PUT :: Doge for success"
 }
 
-#[put("/doge/<time>")]
-fn put_on(time: String) -> &'static str {
-    let command = format!("./demo -t {} --led-rows=<16> -D 1 images/doge.ppm", time);
-
-    Command::new("sh").arg("-c").arg(command).spawn();
-    "PUT :: Doge success {}"
-}
-
-#[put("/dumpsterfire/<duration>")]
-fn put_off(duration: String) -> &'static str {
-    // let baseCommand = "./demo";
-    let duration = format!("-t {}", duration);
-    let rows = "--led-rows=<16>";
-    let refresh = "--led-show-refresh";
-    let dumpsterfire = "images/dumpsterfire.ppm";
-    println!("{}", baseCommand);
-    // Command::new("sh")
-    //     .args(["-c", baseCommand, duration, rows, refresh, dumpsterfire])
-    //     .spawn();
-
-    "PUT :: Dumpster Fire Success"
+#[post("/<duration>")]
+fn display_text(duration: String) -> &'static str {
+    println!("{}", duration);
+    "POST :: Display Text Success"
 }
 
 fn main() {
+    led_matrix::create_matrix_options();
     println!("Server started");
     rocket::ignite()
-        .mount("/", routes![put_on, put_off, tryingStuff])
+        .mount("/", routes![display_image, display_text])
         .launch();
 }
+
+// sudo /home/pi/rpi-rgb-led-matrix/examples-api-use/demo -t 20 --led-rows=16 --led-chain=3 --led-show-refresh --led-pwm-lsb-nanoseconds 100 -D 1 /home/pi/images/dogeegod.ppm
+
+// sudo /home/pi/rpi-rgb-led-matrix/examples-api-use/demo -t 20 --led-rows=16 --led-chain=3 --led-show-refresh --led-pwm-lsb-nanoseconds 100 -D 1 /home/pi/images/dumpsterfire.ppm
+
+// try:
+
+// sudo apt-get remove bluez bluez-firmware pi-bluetooth triggerhappy pigpio
+
+// --led-pwm-bits=<1..11>    : PWM bits (Default: 11).
+
+// --led-slowdown-gpio=2   : Slowdown GPIO. Needed for faster Pis and/or slower panels (Default: 1).
