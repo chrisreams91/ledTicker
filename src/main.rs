@@ -32,11 +32,6 @@ fn display_image(duration: &RawStr, image: &RawStr, powerrelay: Option<&RawStr>)
             BLOCKREQUESTS = true;
             let parsed_duration = duration.as_str().parse().unwrap();
 
-            if powerrelay {
-                thread::spawn(move || {
-                    gpio::power_relay_on_for(parsed_duration);
-                });
-            }
             let command = format!(
             "sudo /home/pi/rpi-rgb-led-matrix/examples-api-use/demo -t {} --led-rows=16 --led-chain=3 --led-slowdown-gpio=2 --led-pwm-lsb-nanoseconds 150 -D 1 /home/pi/images/{}.ppm",
             duration, image
@@ -44,6 +39,9 @@ fn display_image(duration: &RawStr, image: &RawStr, powerrelay: Option<&RawStr>)
 
             thread::spawn(move || {
                 Command::new("sh").arg("-c").arg(command).spawn();
+                if powerrelay {
+                    gpio::power_relay_on_for(parsed_duration);
+                }
                 sleep(Duration::from_secs(parsed_duration));
                 println!("requests no longer blocked");
                 BLOCKREQUESTS = false;
