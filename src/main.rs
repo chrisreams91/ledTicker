@@ -31,7 +31,6 @@ fn display_image(duration: &RawStr, image: &RawStr, powerrelay: Option<&RawStr>)
         } else {
             BLOCKREQUESTS = true;
             let parsed_duration = duration.as_str().parse().unwrap();
-
             let command = format!(
             "sudo /home/pi/rpi-rgb-led-matrix/examples-api-use/demo -t {} --led-rows=16 --led-chain=3 --led-slowdown-gpio=2 --led-pwm-lsb-nanoseconds 150 -D 1 /home/pi/images/{}.ppm",
             duration, image
@@ -41,8 +40,9 @@ fn display_image(duration: &RawStr, image: &RawStr, powerrelay: Option<&RawStr>)
                 Command::new("sh").arg("-c").arg(command).spawn();
                 if powerrelay {
                     gpio::power_relay_on_for(parsed_duration);
+                } else {
+                    sleep(Duration::from_secs(parsed_duration));
                 }
-                sleep(Duration::from_secs(parsed_duration));
                 println!("requests no longer blocked");
                 BLOCKREQUESTS = false;
             });
@@ -51,16 +51,23 @@ fn display_image(duration: &RawStr, image: &RawStr, powerrelay: Option<&RawStr>)
     }
 }
 
-#[put("/scrolltext?<color>&<backgroundcolor>&<outlinecolor>&<spacing>&<font>&<duration>&<text>")]
+#[put("/scrolltext?<color>&<backgroundcolor>&<outlinecolor>&<font>&<duration>&<text>&<powerrelay>")]
 fn display_text(
     color: Option<&RawStr>,
     backgroundcolor: Option<&RawStr>,
     outlinecolor: Option<&RawStr>,
-    spacing: Option<&RawStr>,
     font: Option<&RawStr>,
+    powerrelay: Option<&RawStr>,
     duration: &RawStr,
     text: &RawStr,
-) -> String {
+) -> &'static str {
+    let powerrelay = powerrelay
+        .map(|powerrelay| match powerrelay.as_str() {
+            "true" => true,
+            _ => false,
+        })
+        .unwrap_or_else(|| false);
+
     let color = color
         .map(|color| util::get_rgb_from_color(color))
         .unwrap_or_else(|| "255,255,255");
@@ -73,41 +80,52 @@ fn display_text(
         .map(|outlinecolor| util::get_rgb_from_color(outlinecolor))
         .unwrap_or_else(|| "0,0,0");
 
-    let spacing = spacing
-        .map(|spacing| spacing.as_str())
-        .unwrap_or_else(|| "1");
-
     let font = font
         .map(|font| font.as_str())
         .unwrap_or_else(|| "8x13B.bdf");
 
     let text_decoded = text.percent_decode().unwrap();
     let mut clean_text_looped = String::new();
-    for number in 1..duration.parse().unwrap() {
+    for _number in 1..duration.parse().unwrap() {
         clean_text_looped = clean_text_looped + "  " + &text_decoded;
     }
+    unsafe {
+        if BLOCKREQUESTS {
+            println!("requests are being blocked");
+            "Display Image Failure :: Requests pending"
+        } else {
+            BLOCKREQUESTS = true;
 
-    let command = format!(
-    "sudo /home/pi/rpi-rgb-led-matrix/examples-api-use/scrolling-text-example --led-chain=3 --led-slowdown-gpio=2 --led-pwm-lsb-nanoseconds 100 --led-show-refresh -y 10 -f /home/pi/rpi-rgb-led-matrix/fonts/{} -S {} -C {} -B {} -O {} {}", font, spacing, color, backgroundcolor, outlinecolor, clean_text_looped
-    );
+            let command = format!(
+            "sudo /home/pi/rpi-rgb-led-matrix/examples-api-use/scrolling-text-example --led-chain=3 --led-slowdown-gpio=2 --led-pwm-lsb-nanoseconds 100 --led-show-refresh -y 10 -f /home/pi/rpi-rgb-led-matrix/fonts/{} -C {} -B {} -O {} {}", font, color, backgroundcolor, outlinecolor, clean_text_looped
+            );
 
-    let duration = duration.as_str().parse().unwrap();
-    thread::spawn(move || {
-        Command::new("sh").arg("-c").arg(command).spawn();
-        sleep(Duration::from_secs(duration));
-        println!("aborting process");
-        process::abort();
-    });
-
-    format!(
-        "color: {}, backgroundcolor: {}, outlinecolor: {}, spacing: {},durations: {}, text: {}",
-        color, backgroundcolor, outlinecolor, spacing, duration, clean_text_looped
-    )
+            let parsed_duration = duration.as_str().parse().unwrap();
+            thread::spawn(move || {
+                // Command::new("sh").arg("-c").arg(command).spawn();
+                Command::new("sh").arg("-c").arg("ping google.com").spawn();
+                if powerrelay {
+                    gpio::power_relay_on_for(parsed_duration);
+                } else {
+                    sleep(Duration::from_secs(parsed_duration));
+                }
+                BLOCKREQUESTS = false;
+                println!("aborting process");
+                process::abort();
+            });
+            println!(
+                "color: {}, backgroundcolor: {}, outlinecolor: {}, durations: {}, text: {}",
+                color, backgroundcolor, outlinecolor, duration, clean_text_looped
+            );
+            "Display text sucess"
+        }
+    }
 }
 
-#[put("/powerrelay/on")]
-fn turn_power_relay_on() -> &'static str {
-    gpio::power_relay_on();
+#[put("/powerrelay/on?<duration>")]
+fn turn_power_relay_on(duration: &RawStr) -> &'static str {
+    let parsed_duration = duration.as_str().parse().unwrap();
+    gpio::power_relay_on_for(parsed_duration);
     "GPIO for power relay turned on"
 }
 
@@ -115,6 +133,16 @@ fn turn_power_relay_on() -> &'static str {
 fn turn_power_relay_off() -> &'static str {
     gpio::power_relay_off();
     "GPIO for power relay turned off"
+}
+
+#[get("/")]
+fn help() -> &'static str {
+    "available routes: 
+    PUT : /<image>/<duration>?<powerrelay>
+    PUT : /scrolltext?<color>&<backgroundcolor>&<outlinecolor>&<font>&<duration>&<text>&<powerrelay>
+    PUT : /powerrelay/on?<duration>
+    PUT : /powerrelay/off
+    "
 }
 
 fn main() {
@@ -126,7 +154,8 @@ fn main() {
                 display_image,
                 display_text,
                 turn_power_relay_on,
-                turn_power_relay_off
+                turn_power_relay_off,
+                help
             ],
         )
         .launch();
@@ -138,8 +167,6 @@ fn main() {
 
 // --led-pwm-bits=<1..11>    : PWM bits (Default: 11).
 
-// --led-slowdown-gpio=2   : Slowdown GPIO. Needed for faster Pis and/or slower panels (Default: 1).
-
 // -f /home/pi/rpi-rgb-led-matrix/fonts/8x13.bdf // abs path to font
 // -l 3 //loops
 // -x // origin
@@ -148,3 +175,5 @@ fn main() {
 // -B 0,0,255 // background
 // -O 0,0,0 // outline color
 // -S 1 //spacing
+
+// sudo /home/pi/rpi-rgb-led-matrix/exampe/scrolling-text-example --led-chain=3 --led-slowdown-gpio=2 --led-pwm-lsb-nanoseconds 100 --led-show-refresh -l 5 -y 10 -f /home/pi/rpi-rgb-led-matrix/fonts/8x13B.bdf -C 0,0,255 FLEX VERSION 1.2.47 WAS RELEASED
