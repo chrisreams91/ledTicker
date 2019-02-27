@@ -4,6 +4,7 @@
 extern crate rocket;
 
 use rocket::http::RawStr;
+use std::panic;
 use std::process;
 use std::process::Command;
 use std::thread;
@@ -15,7 +16,7 @@ mod util;
 
 static mut BLOCKREQUESTS: bool = false;
 
-#[put("/<image>/<duration>?<powerrelay>")]
+#[put("/<duration>/<image>?<powerrelay>")]
 fn display_image(duration: &RawStr, image: &RawStr, powerrelay: Option<&RawStr>) -> &'static str {
     let powerrelay = powerrelay
         .map(|powerrelay| match powerrelay.as_str() {
@@ -51,15 +52,16 @@ fn display_image(duration: &RawStr, image: &RawStr, powerrelay: Option<&RawStr>)
     }
 }
 
-#[put("/scrolltext?<color>&<backgroundcolor>&<outlinecolor>&<font>&<duration>&<text>&<powerrelay>")]
+#[put("/scrolltext/<duration>/<text>?<powerrelay>&<color>&<backgroundcolor>&<outlinecolor>&<font>")]
 fn display_text(
+    duration: &RawStr,
+    text: &RawStr,
     color: Option<&RawStr>,
     backgroundcolor: Option<&RawStr>,
     outlinecolor: Option<&RawStr>,
     font: Option<&RawStr>,
     powerrelay: Option<&RawStr>,
-    duration: &RawStr,
-    text: &RawStr,
+    // speed: Option<&RawStr>
 ) -> &'static str {
     let powerrelay = powerrelay
         .map(|powerrelay| match powerrelay.as_str() {
@@ -92,18 +94,18 @@ fn display_text(
     unsafe {
         if BLOCKREQUESTS {
             println!("requests are being blocked");
-            "Display Image Failure :: Requests pending"
+            "Display Text Failure :: Requests pending"
         } else {
             BLOCKREQUESTS = true;
+            let parsed_duration = duration.as_str().parse().unwrap();
 
             let command = format!(
-            "sudo /home/pi/rpi-rgb-led-matrix/examples-api-use/scrolling-text-example --led-chain=3 --led-slowdown-gpio=2 --led-pwm-lsb-nanoseconds 100 --led-show-refresh -y 10 -f /home/pi/rpi-rgb-led-matrix/fonts/{} -C {} -B {} -O {} {}", font, color, backgroundcolor, outlinecolor, clean_text_looped
+            "sudo timeout {} /home/pi/rpi-rgb-led-matrix/examples-api-use/scrolling-text-example --led-chain=3 --led-slowdown-gpio=2 --led-pwm-lsb-nanoseconds 100 --led-show-refresh -y 10 -f /home/pi/rpi-rgb-led-matrix/fonts/{} -l 1 -C {} -B {} -O {} {}", parsed_duration, font, color, backgroundcolor, outlinecolor, clean_text_looped
             );
 
-            let parsed_duration = duration.as_str().parse().unwrap();
             thread::spawn(move || {
-                // Command::new("sh").arg("-c").arg(command).spawn();
-                Command::new("sh").arg("-c").arg("ping google.com").spawn();
+                Command::new("sh").arg("-c").arg(command).spawn();
+
                 if powerrelay {
                     gpio::power_relay_on_for(parsed_duration);
                 } else {
@@ -111,12 +113,7 @@ fn display_text(
                 }
                 BLOCKREQUESTS = false;
                 println!("aborting process");
-                process::abort();
             });
-            println!(
-                "color: {}, backgroundcolor: {}, outlinecolor: {}, durations: {}, text: {}",
-                color, backgroundcolor, outlinecolor, duration, clean_text_looped
-            );
             "Display text sucess"
         }
     }
@@ -137,12 +134,12 @@ fn turn_power_relay_off() -> &'static str {
 
 #[get("/")]
 fn help() -> &'static str {
-    "available routes: 
-    PUT : /<image>/<duration>?<powerrelay>
-    PUT : /scrolltext?<color>&<backgroundcolor>&<outlinecolor>&<font>&<duration>&<text>&<powerrelay>
-    PUT : /powerrelay/on?<duration>
-    PUT : /powerrelay/off
-    "
+    "temp"
+}
+
+#[get("/fonts")]
+fn get_fonts() -> &'static str {
+    "temp"
 }
 
 fn main() {
@@ -155,7 +152,8 @@ fn main() {
                 display_text,
                 turn_power_relay_on,
                 turn_power_relay_off,
-                help
+                help,
+                get_fonts
             ],
         )
         .launch();
