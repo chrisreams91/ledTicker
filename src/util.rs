@@ -1,3 +1,8 @@
+use std::fs;
+use std::io;
+use std::iter::Iterator;
+use std::path::Path;
+
 //fix this
 pub fn get_rgb_from_color(color: &str) -> &str {
     match color {
@@ -15,6 +20,15 @@ pub fn get_rgb_from_color(color: &str) -> &str {
         _ => color,
         // regex to max an RGB value else return 0,0,0
     }
+}
+
+pub fn read_directory_contents(dir: &Path) -> std::io::Result<()>{
+    let mut x: [];
+    for entry in fs::read_dir(dir)? {
+        let dir = entry?;
+        println!("{:?}", dir.path());
+    }
+    Ok(())
 }
 
 pub fn get_help() -> &'static str {

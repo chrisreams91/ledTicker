@@ -4,8 +4,7 @@
 extern crate rocket;
 
 use rocket::http::RawStr;
-use std::panic;
-use std::process;
+use std::path::Path;
 use std::process::Command;
 use std::thread;
 use std::thread::sleep;
@@ -105,7 +104,6 @@ fn display_text(
 
             thread::spawn(move || {
                 Command::new("sh").arg("-c").arg(command).spawn();
-
                 if powerrelay {
                     gpio::power_relay_on_for(parsed_duration);
                 } else {
@@ -139,6 +137,8 @@ fn help() -> &'static str {
 
 #[get("/fonts")]
 fn get_fonts() -> &'static str {
+    let path = Path::new("./fonts");
+    let contents = util::read_directory_contents(path);
     "temp"
 }
 
