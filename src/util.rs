@@ -1,6 +1,7 @@
+use std::ffi::OsString;
 use std::fs;
 use std::io::Result;
-use std::path::{Path, PathBuf};
+use std::path::Path;
 use std::vec::Vec;
 
 //fix this
@@ -22,11 +23,11 @@ pub fn get_rgb_from_color(color: &str) -> &str {
     }
 }
 
-pub fn read_directory_contents(dir: &Path) -> Result<Vec<PathBuf>> {
+pub fn read_directory_contents(dir: &Path) -> Result<Vec<OsString>> {
     let mut stack = Vec::new();
     for entry in fs::read_dir(dir)? {
         let dir = entry?;
-        stack.push(dir.path())
+        stack.push(dir.file_name())
     }
     Ok(stack)
 }

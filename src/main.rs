@@ -139,9 +139,11 @@ fn help() -> &'static str {
 fn get_fonts() -> &'static str {
     let path = Path::new("./fonts");
     let contents = util::read_directory_contents(path);
-    println!("{:?}", contents);
-    contents.iter().for_each(|x| println!("{:?}", x));
-    "TEST"
+    // println!("{:?}", contents);
+    let y = contents.map(|content| content.iter().for_each(|x| x.into_string()));
+    // let y = contents.iter().for_each(|x| x.pop());
+    println!("{:?}", y);
+    "test"
 }
 
 fn main() {
