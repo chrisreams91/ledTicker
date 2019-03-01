@@ -1,7 +1,7 @@
 use std::fs;
-use std::io;
-use std::iter::Iterator;
-use std::path::Path;
+use std::io::Result;
+use std::path::{Path, PathBuf};
+use std::vec::Vec;
 
 //fix this
 pub fn get_rgb_from_color(color: &str) -> &str {
@@ -22,13 +22,13 @@ pub fn get_rgb_from_color(color: &str) -> &str {
     }
 }
 
-pub fn read_directory_contents(dir: &Path) -> std::io::Result<()>{
-    let mut x: [];
+pub fn read_directory_contents(dir: &Path) -> Result<Vec<PathBuf>> {
+    let mut stack = Vec::new();
     for entry in fs::read_dir(dir)? {
         let dir = entry?;
-        println!("{:?}", dir.path());
+        stack.push(dir.path())
     }
-    Ok(())
+    Ok(stack)
 }
 
 pub fn get_help() -> &'static str {

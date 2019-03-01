@@ -139,7 +139,9 @@ fn help() -> &'static str {
 fn get_fonts() -> &'static str {
     let path = Path::new("./fonts");
     let contents = util::read_directory_contents(path);
-    "temp"
+    println!("{:?}", contents);
+    contents.iter().for_each(|x| println!("{:?}", x));
+    "TEST"
 }
 
 fn main() {
