@@ -4,6 +4,8 @@
 extern crate rocket;
 
 use rocket::http::RawStr;
+use rocket::http::Status;
+
 use std::path::Path;
 use std::process::Command;
 use std::thread;
@@ -117,6 +119,27 @@ fn display_text(
     }
 }
 
+#[get("/")]
+fn help() -> &'static str {
+    "temp"
+}
+
+#[get("/<folder>")]
+fn get_folder_contents(folder: &RawStr) -> String {
+    let path = Path::new(folder.as_str());
+
+    match util::read_directory_contents(path) {
+        Ok(folder) => {
+            let response = format!("Available {}: \n", path.to_str().unwrap());
+            response + &folder.join("\n")
+        }
+        Err(e) => {
+            println!("Error reading from socket stream: {}", e);
+            String::from("Error: This folder does not exist")
+        }
+    }
+}
+
 #[put("/powerrelay/on?<duration>")]
 fn turn_power_relay_on(duration: &RawStr) -> &'static str {
     let parsed_duration = duration.as_str().parse().unwrap();
@@ -130,22 +153,6 @@ fn turn_power_relay_off() -> &'static str {
     "GPIO for power relay turned off"
 }
 
-#[get("/")]
-fn help() -> &'static str {
-    "temp"
-}
-
-#[get("/fonts")]
-fn get_fonts() -> &'static str {
-    let path = Path::new("./fonts");
-    let contents = util::read_directory_contents(path);
-    // println!("{:?}", contents);
-    let y = contents.map(|content| content.iter().for_each(|x| x.into_string()));
-    // let y = contents.iter().for_each(|x| x.pop());
-    println!("{:?}", y);
-    "test"
-}
-
 fn main() {
     println!("Server started");
     rocket::ignite()
@@ -157,25 +164,8 @@ fn main() {
                 turn_power_relay_on,
                 turn_power_relay_off,
                 help,
-                get_fonts
+                get_folder_contents
             ],
         )
         .launch();
 }
-
-// test this --led-pwm-lsb-nanoseconds 100
-
-// try:
-
-// --led-pwm-bits=<1..11>    : PWM bits (Default: 11).
-
-// -f /home/pi/rpi-rgb-led-matrix/fonts/8x13.bdf // abs path to font
-// -l 3 //loops
-// -x // origin
-// -y 9// origin
-// -C 255,0,0 //color
-// -B 0,0,255 // background
-// -O 0,0,0 // outline color
-// -S 1 //spacing
-
-// sudo /home/pi/rpi-rgb-led-matrix/exampe/scrolling-text-example --led-chain=3 --led-slowdown-gpio=2 --led-pwm-lsb-nanoseconds 100 --led-show-refresh -l 5 -y 10 -f /home/pi/rpi-rgb-led-matrix/fonts/8x13B.bdf -C 0,0,255 FLEX VERSION 1.2.47 WAS RELEASED

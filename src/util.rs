@@ -23,13 +23,18 @@ pub fn get_rgb_from_color(color: &str) -> &str {
     }
 }
 
-pub fn read_directory_contents(dir: &Path) -> Result<Vec<OsString>> {
-    let mut stack = Vec::new();
-    for entry in fs::read_dir(dir)? {
-        let dir = entry?;
-        stack.push(dir.file_name())
-    }
-    Ok(stack)
+pub fn read_directory_contents(dir: &Path) -> Result<Vec<String>> {
+    let paths = fs::read_dir(dir).unwrap();
+
+    Ok(paths
+        .filter_map(|entry| {
+            entry.ok().and_then(|e| {
+                e.path()
+                    .file_name()
+                    .and_then(|n| n.to_str().map(|s| String::from(s)))
+            })
+        })
+        .collect::<Vec<String>>())
 }
 
 pub fn get_help() -> &'static str {
