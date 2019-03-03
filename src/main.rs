@@ -17,14 +17,9 @@ mod util;
 
 static mut BLOCKREQUESTS: bool = false;
 
-#[put("/<duration>/<image>?<powerrelay>")]
+#[put("/scrollimage/<duration>/<image>?<powerrelay>")]
 fn display_image(duration: &RawStr, image: &RawStr, powerrelay: Option<&RawStr>) -> &'static str {
-    let powerrelay = powerrelay
-        .map(|powerrelay| match powerrelay.as_str() {
-            "true" => true,
-            _ => false,
-        })
-        .unwrap_or_else(|| false);
+    let powerrelay = util::parse_powerrelay(powerrelay);
 
     unsafe {
         if BLOCKREQUESTS {
@@ -49,6 +44,41 @@ fn display_image(duration: &RawStr, image: &RawStr, powerrelay: Option<&RawStr>)
                 BLOCKREQUESTS = false;
             });
             "Display Image Success"
+        }
+    }
+}
+
+#[put("/showgif/<gif>/<duration>?<powerrelay>")]
+fn display_gif(gif: &RawStr, duration: &RawStr, powerrelay: Option<&RawStr>) -> &'static str {
+    let powerrelay = util::parse_powerrelay(powerrelay);
+    unsafe {
+        if BLOCKREQUESTS {
+            println!("requests are being blocked");
+            "Display Gif Failure :: Requests pending"
+        } else {
+            BLOCKREQUESTS = true;
+            let parsed_duration = duration.as_str().parse().unwrap();
+
+            let command = match gif.as_str() {
+                "pacman" => "sudo /home/pi/rpi-rgb-led-matrix/utilsled-image-viewer --led-rows=64 -C --led-chain=3 /home/pi/gifs/pacman.gif",
+                "nyancat" => "sudo /home/pi/rpi-rgb-led-matrix/utils/led-image-viewer --led-rows=64 -C --led-chain=3 /home/pi/gifs/nyan.gif",
+                "ditto" => "sudo /home/pi/rpi-rgb-led-matrix/utils/led-image-viewer --led-slowdown-gpio=2 --led-rows=32 -C --led-chain=1 --led-brightness=40 /home/pi/gifs/ditto.gif",
+                "mariobanana" => "sudo /home/pi/rpi-rgb-led-matrix/utils/led-image-viewer --led-rows=64 -C --led-chain=3 /home/pi/gifs/mario.gif",
+                _ => ""
+            };
+
+            thread::spawn(move || {
+                Command::new("sh").arg("-c").arg(command).spawn();
+                println!("{}", command);
+                if powerrelay {
+                    gpio::power_relay_on_for(parsed_duration);
+                } else {
+                    sleep(Duration::from_secs(parsed_duration));
+                }
+                println!("requests no longer blocked");
+                BLOCKREQUESTS = false;
+            });
+            "Display GIF Success"
         }
     }
 }
@@ -121,9 +151,10 @@ fn display_text(
 
 #[get("/")]
 fn help() -> &'static str {
-    "temp"
+    util::help()
 }
 
+//error handling ?
 #[get("/<folder>")]
 fn get_folder_contents(folder: &RawStr) -> String {
     let path = Path::new(folder.as_str());
@@ -134,7 +165,7 @@ fn get_folder_contents(folder: &RawStr) -> String {
             response + &folder.join("\n")
         }
         Err(e) => {
-            println!("Error reading from socket stream: {}", e);
+            println!("Error reading from this directory: {}", e);
             String::from("Error: This folder does not exist")
         }
     }
@@ -161,10 +192,11 @@ fn main() {
             routes![
                 display_image,
                 display_text,
+                display_gif,
                 turn_power_relay_on,
                 turn_power_relay_off,
-                help,
-                get_folder_contents
+                get_folder_contents,
+                help
             ],
         )
         .launch();

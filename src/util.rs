@@ -1,8 +1,32 @@
-use std::ffi::OsString;
+use rocket::http::RawStr;
+
 use std::fs;
 use std::io::Result;
 use std::path::Path;
+use std::process::Command;
+use std::thread;
+use std::thread::sleep;
+use std::time::Duration;
 use std::vec::Vec;
+
+// mod gpio;
+
+pub fn parse_powerrelay(powerrelay: Option<&RawStr>) -> bool {
+    powerrelay
+        .map(|powerrelay| match powerrelay.as_str() {
+            "true" => true,
+            _ => false,
+        })
+        .unwrap_or_else(|| false)
+}
+
+// pub fn handle_powerrelay(duration: u64, powerrelay: bool) {
+//     if powerrelay {
+//         gpio::power_relay_on_for(duration);
+//     } else {
+//         sleep(Duration::from_secs(duration));
+//     }
+// }
 
 //fix this
 pub fn get_rgb_from_color(color: &str) -> &str {
@@ -23,31 +47,52 @@ pub fn get_rgb_from_color(color: &str) -> &str {
     }
 }
 
+// Error handling ?
 pub fn read_directory_contents(dir: &Path) -> Result<Vec<String>> {
     let paths = fs::read_dir(dir).unwrap();
+
+    // let result = match paths {
+    //     Ok(contents) => paths
+    //         .unwrap()
+    //         .filter_map(|entry| {
+    //             entry.ok().and_then(|e| {
+    //                 e.path()
+    //                     .file_name()
+    //                     .and_then(|n| n.to_str().map(String::from))
+    //             })
+    //         })
+    //         .collect::<Vec<String>>(),
+    //     Err(error) => "oops",
+    // };
 
     Ok(paths
         .filter_map(|entry| {
             entry.ok().and_then(|e| {
                 e.path()
                     .file_name()
-                    .and_then(|n| n.to_str().map(|s| String::from(s)))
+                    .and_then(|n| n.to_str().map(String::from))
             })
         })
         .collect::<Vec<String>>())
 }
 
-pub fn get_help() -> &'static str {
+pub fn help() -> &'static str {
     "available routes: 
+
+        GET : /fonts = available fonts
+
+        GET : /images = available images
+
+        GET : /gifs = available gifs
 
         PUT : /<image>/<duration>?<powerrelay>
 
         PUT : /scrolltext/<duration>&<text>?<powerrelay>&<color>&<backgroundcolor>&<outlinecolor>&<font>
 
-        GET : /fonts
 
     image = image file name
         Images need to be on the Pi so send them to me if you would like it available.
+
     font = font file name
         like images it needs to be on Pi so send them to me if you would like more added other wise GET /fonts
     duration = seconds
