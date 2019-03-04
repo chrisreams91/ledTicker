@@ -17,15 +17,17 @@ mod util;
 
 static mut BLOCKREQUESTS: bool = false;
 
-#[put("/scrollimage/<duration>/<image>?<powerrelay>")]
-fn display_image(duration: &RawStr, image: &RawStr, powerrelay: Option<&RawStr>) -> &'static str {
+#[put("/scrollimage/<image>/<duration>?<powerrelay>")]
+fn display_image(image: &RawStr, duration: &RawStr, powerrelay: Option<&RawStr>) -> &'static str {
     let powerrelay = util::parse_powerrelay(powerrelay);
+    let valid_image = util::parse_file("./images", image);
+    let valid_duration = duration.as_str().parse::<u64>().is_ok();
 
     unsafe {
         if BLOCKREQUESTS {
             println!("requests are being blocked");
             "Display Image Failure :: Requests pending"
-        } else {
+        } else if valid_image && valid_duration {
             BLOCKREQUESTS = true;
             let parsed_duration = duration.as_str().parse().unwrap();
             let command = format!(
@@ -44,32 +46,41 @@ fn display_image(duration: &RawStr, image: &RawStr, powerrelay: Option<&RawStr>)
                 BLOCKREQUESTS = false;
             });
             "Display Image Success"
+        } else {
+            println!("Invalid Request :: Bad Parameters");
+            "Invalid Request :: Bad Parameters"
         }
     }
 }
 
-#[put("/showgif/<gif>/<duration>?<powerrelay>")]
+#[put("/gif/<gif>/<duration>?<powerrelay>")]
 fn display_gif(gif: &RawStr, duration: &RawStr, powerrelay: Option<&RawStr>) -> &'static str {
-    let powerrelay = util::parse_powerrelay(powerrelay);
     unsafe {
         if BLOCKREQUESTS {
             println!("requests are being blocked");
             "Display Gif Failure :: Requests pending"
         } else {
             BLOCKREQUESTS = true;
+            let powerrelay = util::parse_powerrelay(powerrelay);
             let parsed_duration = duration.as_str().parse().unwrap();
+            let base_command = format!(
+                "sudo timeout {} /home/pi/rpi-rgb-led-matrix/utils/led-image-viewer",
+                parsed_duration
+            );
 
-            let command = match gif.as_str() {
-                "pacman" => "sudo /home/pi/rpi-rgb-led-matrix/utilsled-image-viewer --led-rows=64 -C --led-chain=3 /home/pi/gifs/pacman.gif",
-                "nyancat" => "sudo /home/pi/rpi-rgb-led-matrix/utils/led-image-viewer --led-rows=64 -C --led-chain=3 /home/pi/gifs/nyan.gif",
-                "ditto" => "sudo /home/pi/rpi-rgb-led-matrix/utils/led-image-viewer --led-slowdown-gpio=2 --led-rows=32 -C --led-chain=1 --led-brightness=40 /home/pi/gifs/ditto.gif",
-                "mariobanana" => "sudo /home/pi/rpi-rgb-led-matrix/utils/led-image-viewer --led-rows=64 -C --led-chain=3 /home/pi/gifs/mario.gif",
+            let args = match gif.as_str() {
+                "pacman" => " --led-rows=64 -C --led-chain=3 /home/pi/gifs/pacman.gif",
+                "nyancat" => " --led-rows=64 -C --led-chain=3 /home/pi/gifs/nyancat.gif",
+                "ditto" => " --led-slowdown-gpio=2 --led-rows=32 -C --led-chain=1 --led-brightness=40 /home/pi/gifs/ditto.gif",
+                "mariobanana" => " --led-rows=64 -C --led-chain=3 /home/pi/gifs/mariobanana.gif",
+                "flexdumpster" => " --led-rows=16 -C --led-chain=3 /home/pi/gifs/flexdumpster.gif",
                 _ => ""
             };
+            let command = format!("{}{}", base_command, args);
 
             thread::spawn(move || {
-                Command::new("sh").arg("-c").arg(command).spawn();
                 println!("{}", command);
+                Command::new("sh").arg("-c").arg(command).spawn();
                 if powerrelay {
                     gpio::power_relay_on_for(parsed_duration);
                 } else {
@@ -83,7 +94,7 @@ fn display_gif(gif: &RawStr, duration: &RawStr, powerrelay: Option<&RawStr>) -> 
     }
 }
 
-#[put("/scrolltext/<duration>/<text>?<powerrelay>&<color>&<backgroundcolor>&<outlinecolor>&<font>")]
+#[put("/scrolltext/<text>/<duration>?<powerrelay>&<color>&<backgroundcolor>&<outlinecolor>&<font>")]
 fn display_text(
     duration: &RawStr,
     text: &RawStr,
@@ -94,40 +105,36 @@ fn display_text(
     powerrelay: Option<&RawStr>,
     // speed: Option<&RawStr>
 ) -> &'static str {
-    let powerrelay = powerrelay
-        .map(|powerrelay| match powerrelay.as_str() {
-            "true" => true,
-            _ => false,
-        })
-        .unwrap_or_else(|| false);
-
-    let color = color
-        .map(|color| util::get_rgb_from_color(color))
-        .unwrap_or_else(|| "255,255,255");
-
-    let backgroundcolor = backgroundcolor
-        .map(|backgroundcolor| util::get_rgb_from_color(backgroundcolor))
-        .unwrap_or_else(|| "0,0,0");
-
-    let outlinecolor = outlinecolor
-        .map(|outlinecolor| util::get_rgb_from_color(outlinecolor))
-        .unwrap_or_else(|| "0,0,0");
-
-    let font = font
-        .map(|font| font.as_str())
-        .unwrap_or_else(|| "8x13B.bdf");
-
-    let text_decoded = text.percent_decode().unwrap();
-    let mut clean_text_looped = String::new();
-    for _number in 1..duration.parse().unwrap() {
-        clean_text_looped = clean_text_looped + "  " + &text_decoded;
-    }
     unsafe {
         if BLOCKREQUESTS {
             println!("requests are being blocked");
             "Display Text Failure :: Requests pending"
         } else {
             BLOCKREQUESTS = true;
+            let powerrelay = util::parse_powerrelay(powerrelay);
+
+            let color = color
+                .map(|color| util::get_rgb_from_color(color))
+                .unwrap_or_else(|| "255,255,255");
+
+            let backgroundcolor = backgroundcolor
+                .map(|backgroundcolor| util::get_rgb_from_color(backgroundcolor))
+                .unwrap_or_else(|| "0,0,0");
+
+            let outlinecolor = outlinecolor
+                .map(|outlinecolor| util::get_rgb_from_color(outlinecolor))
+                .unwrap_or_else(|| "0,0,0");
+
+            let font = font
+                .map(|font| font.as_str())
+                .unwrap_or_else(|| "8x13B.bdf");
+
+            let text_decoded = text.percent_decode().unwrap();
+            let mut clean_text_looped = String::new();
+            for _number in 1..duration.parse().unwrap() {
+                clean_text_looped = clean_text_looped + "  " + &text_decoded;
+            }
+
             let parsed_duration = duration.as_str().parse().unwrap();
 
             let command = format!(
@@ -164,6 +171,7 @@ fn get_folder_contents(folder: &RawStr) -> String {
             let response = format!("Available {}: \n", path.to_str().unwrap());
             response + &folder.join("\n")
         }
+        // not catching
         Err(e) => {
             println!("Error reading from this directory: {}", e);
             String::from("Error: This folder does not exist")
@@ -184,6 +192,14 @@ fn turn_power_relay_off() -> &'static str {
     "GPIO for power relay turned off"
 }
 
+#[put("/blockrequests")]
+fn flip_block_requests() -> &'static str {
+    unsafe {
+        BLOCKREQUESTS = !BLOCKREQUESTS;
+    }
+    "global var BLOCKREQUESTS flipped"
+}
+
 fn main() {
     println!("Server started");
     rocket::ignite()
@@ -196,7 +212,8 @@ fn main() {
                 turn_power_relay_on,
                 turn_power_relay_off,
                 get_folder_contents,
-                help
+                help,
+                flip_block_requests
             ],
         )
         .launch();

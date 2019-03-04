@@ -9,8 +9,6 @@ use std::thread::sleep;
 use std::time::Duration;
 use std::vec::Vec;
 
-// mod gpio;
-
 pub fn parse_powerrelay(powerrelay: Option<&RawStr>) -> bool {
     powerrelay
         .map(|powerrelay| match powerrelay.as_str() {
@@ -20,7 +18,15 @@ pub fn parse_powerrelay(powerrelay: Option<&RawStr>) -> bool {
         .unwrap_or_else(|| false)
 }
 
-// pub fn handle_powerrelay(duration: u64, powerrelay: bool) {
+pub fn parse_file(directory: &str, file_name: &RawStr) -> bool {
+    let path = Path::new(directory);
+    let contents = read_directory_contents(path).unwrap();
+    let file_name = String::from(file_name.as_str());
+
+    contents.contains(&file_name)
+}
+
+// pub fn handle_sleep(duration: u64, powerrelay: bool) {
 //     if powerrelay {
 //         gpio::power_relay_on_for(duration);
 //     } else {
@@ -28,7 +34,13 @@ pub fn parse_powerrelay(powerrelay: Option<&RawStr>) -> bool {
 //     }
 // }
 
-//fix this
+// pub fn parse_color(color: Option<&RawStr>) -> &str {
+//     color
+//         .map(|color| get_rgb_from_color(color))
+//         .unwrap_or_else(|| "255,255,255");
+// }
+
+// regex to max an RGB value else return 0,0,0
 pub fn get_rgb_from_color(color: &str) -> &str {
     match color {
         "red" => "255,0,0",
@@ -43,7 +55,6 @@ pub fn get_rgb_from_color(color: &str) -> &str {
         "white" => "255,255,255",
         "pink" => "255,102,255",
         _ => color,
-        // regex to max an RGB value else return 0,0,0
     }
 }
 
@@ -69,6 +80,7 @@ pub fn read_directory_contents(dir: &Path) -> Result<Vec<String>> {
         .filter_map(|entry| {
             entry.ok().and_then(|e| {
                 e.path()
+                    .with_extension("")
                     .file_name()
                     .and_then(|n| n.to_str().map(String::from))
             })
@@ -90,13 +102,14 @@ pub fn help() -> &'static str {
         PUT : /scrolltext/<duration>&<text>?<powerrelay>&<color>&<backgroundcolor>&<outlinecolor>&<font>
 
 
-    image = image file name
-        Images need to be on the Pi so send them to me if you would like it available.
+    image = image file name - Images need to be on the Pi so send them to me if you would like it available.
 
-    font = font file name
-        like images it needs to be on Pi so send them to me if you would like more added other wise GET /fonts
+    font = font file name - like images it needs to be on Pi so send them to me if you would like more added other wise GET /fonts
+
     duration = seconds
+
     powerrelay = true to turn on party lights or whatever else is connected
+
     color / backgroundcolor / outlinecolor = Either a color string ex red blue green or a valid RGB value ex 255,255,255
 
     Everything after the ? are optional parameters.
