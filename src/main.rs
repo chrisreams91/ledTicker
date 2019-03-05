@@ -19,24 +19,25 @@ static mut BLOCKREQUESTS: bool = false;
 
 #[put("/scrollimage/<image>/<duration>?<powerrelay>")]
 fn display_image(image: &RawStr, duration: &RawStr, powerrelay: Option<&RawStr>) -> &'static str {
-    let powerrelay = util::parse_powerrelay(powerrelay);
     let valid_image = util::parse_file("./images", image);
     let valid_duration = duration.as_str().parse::<u64>().is_ok();
 
+    //https://rocket.rs/v0.4/guide/state/
     unsafe {
         if BLOCKREQUESTS {
             println!("requests are being blocked");
             "Display Image Failure :: Requests pending"
         } else if valid_image && valid_duration {
             BLOCKREQUESTS = true;
+            let powerrelay = util::parse_powerrelay(powerrelay);
             let parsed_duration = duration.as_str().parse().unwrap();
             let command = format!(
             "sudo /home/pi/rpi-rgb-led-matrix/examples-api-use/demo -t {} --led-rows=16 --led-chain=3 --led-slowdown-gpio=2 --led-pwm-lsb-nanoseconds 150 -D 1 /home/pi/images/{}.ppm",
-            duration, image
+            parsed_duration, image
             );
 
             thread::spawn(move || {
-                Command::new("sh").arg("-c").arg(command).spawn();
+                // Command::new("sh").arg("-c").arg(command).spawn();
                 if powerrelay {
                     gpio::power_relay_on_for(parsed_duration);
                 } else {
@@ -45,6 +46,7 @@ fn display_image(image: &RawStr, duration: &RawStr, powerrelay: Option<&RawStr>)
                 println!("requests no longer blocked");
                 BLOCKREQUESTS = false;
             });
+
             "Display Image Success"
         } else {
             println!("Invalid Request :: Bad Parameters");
@@ -55,19 +57,24 @@ fn display_image(image: &RawStr, duration: &RawStr, powerrelay: Option<&RawStr>)
 
 #[put("/gif/<gif>/<duration>?<powerrelay>")]
 fn display_gif(gif: &RawStr, duration: &RawStr, powerrelay: Option<&RawStr>) -> &'static str {
+    let valid_gif = util::parse_file("./gifs", gif);
+    let valid_duration = duration.as_str().parse::<u64>().is_ok();
+
     unsafe {
         if BLOCKREQUESTS {
             println!("requests are being blocked");
             "Display Gif Failure :: Requests pending"
-        } else {
+        } else if valid_gif && valid_duration {
             BLOCKREQUESTS = true;
             let powerrelay = util::parse_powerrelay(powerrelay);
             let parsed_duration = duration.as_str().parse().unwrap();
+
             let base_command = format!(
                 "sudo timeout {} /home/pi/rpi-rgb-led-matrix/utils/led-image-viewer",
                 parsed_duration
             );
 
+            // premade or alow req params to set all args
             let args = match gif.as_str() {
                 "pacman" => " --led-rows=64 -C --led-chain=3 /home/pi/gifs/pacman.gif",
                 "nyancat" => " --led-rows=64 -C --led-chain=3 /home/pi/gifs/nyancat.gif",
@@ -78,6 +85,7 @@ fn display_gif(gif: &RawStr, duration: &RawStr, powerrelay: Option<&RawStr>) -> 
             };
             let command = format!("{}{}", base_command, args);
 
+            // some gifs take longer than other to load set timeout?
             thread::spawn(move || {
                 println!("{}", command);
                 Command::new("sh").arg("-c").arg(command).spawn();
@@ -90,6 +98,9 @@ fn display_gif(gif: &RawStr, duration: &RawStr, powerrelay: Option<&RawStr>) -> 
                 BLOCKREQUESTS = false;
             });
             "Display GIF Success"
+        } else {
+            println!("Invalid Request :: Bad Parameters");
+            "Invalid Request :: Bad Parameters"
         }
     }
 }
@@ -105,13 +116,16 @@ fn display_text(
     powerrelay: Option<&RawStr>,
     // speed: Option<&RawStr>
 ) -> &'static str {
+    let valid_duration = duration.as_str().parse::<u64>().is_ok();
+
     unsafe {
         if BLOCKREQUESTS {
             println!("requests are being blocked");
             "Display Text Failure :: Requests pending"
-        } else {
+        } else if valid_duration {
             BLOCKREQUESTS = true;
             let powerrelay = util::parse_powerrelay(powerrelay);
+            let parsed_duration = duration.as_str().parse().unwrap();
 
             let color = color
                 .map(|color| util::get_rgb_from_color(color))
@@ -135,23 +149,24 @@ fn display_text(
                 clean_text_looped = clean_text_looped + "  " + &text_decoded;
             }
 
-            let parsed_duration = duration.as_str().parse().unwrap();
-
             let command = format!(
             "sudo timeout {} /home/pi/rpi-rgb-led-matrix/examples-api-use/scrolling-text-example --led-chain=3 --led-slowdown-gpio=2 --led-pwm-lsb-nanoseconds 100 --led-show-refresh -y 10 -f /home/pi/rpi-rgb-led-matrix/fonts/{} -l 1 -C {} -B {} -O {} {}", parsed_duration, font, color, backgroundcolor, outlinecolor, clean_text_looped
             );
 
             thread::spawn(move || {
-                Command::new("sh").arg("-c").arg(command).spawn();
+                // Command::new("sh").arg("-c").arg(command).spawn();
                 if powerrelay {
                     gpio::power_relay_on_for(parsed_duration);
                 } else {
                     sleep(Duration::from_secs(parsed_duration));
                 }
-                BLOCKREQUESTS = false;
                 println!("aborting process");
+                BLOCKREQUESTS = false;
             });
             "Display text sucess"
+        } else {
+            println!("Invalid Request :: Bad Parameters");
+            "Invalid Request :: Bad Parameters"
         }
     }
 }
@@ -171,9 +186,8 @@ fn get_folder_contents(folder: &RawStr) -> String {
             let response = format!("Available {}: \n", path.to_str().unwrap());
             response + &folder.join("\n")
         }
-        // not catching
         Err(e) => {
-            println!("Error reading from this directory: {}", e);
+            println!("{}", e);
             String::from("Error: This folder does not exist")
         }
     }

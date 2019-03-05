@@ -1,3 +1,6 @@
+extern crate regex;
+
+use regex::Regex;
 use rocket::http::RawStr;
 
 use std::fs;
@@ -26,22 +29,26 @@ pub fn parse_file(directory: &str, file_name: &RawStr) -> bool {
     contents.contains(&file_name)
 }
 
-// pub fn handle_sleep(duration: u64, powerrelay: bool) {
-//     if powerrelay {
-//         gpio::power_relay_on_for(duration);
-//     } else {
-//         sleep(Duration::from_secs(duration));
-//     }
-// }
+pub fn read_directory_contents(dir: &Path) -> Result<Vec<String>> {
+    let paths = fs::read_dir(dir)?;
 
-// pub fn parse_color(color: Option<&RawStr>) -> &str {
-//     color
-//         .map(|color| get_rgb_from_color(color))
-//         .unwrap_or_else(|| "255,255,255");
-// }
+    Ok(paths
+        .filter_map(|entry| {
+            entry.ok().and_then(|e| {
+                e.path()
+                    .with_extension("")
+                    .file_name()
+                    .and_then(|n| n.to_str().map(String::from))
+            })
+        })
+        .collect::<Vec<String>>())
+}
 
-// regex to max an RGB value else return 0,0,0
+// make result throw err if not valid
 pub fn get_rgb_from_color(color: &str) -> &str {
+    let rgb_regex = Regex::new(r"^(?:(?:^|,\s*)([01]?\d\d?|2[0-4]\d|25[0-5])){3}$").unwrap();
+    println!("{}", rgb_regex.is_match(color));
+
     match color {
         "red" => "255,0,0",
         "blue" => "0,0,255",
@@ -54,38 +61,14 @@ pub fn get_rgb_from_color(color: &str) -> &str {
         "black" => "0,0,0",
         "white" => "255,255,255",
         "pink" => "255,102,255",
-        _ => color,
+        _ => {
+            if rgb_regex.is_match(color) {
+                color
+            } else {
+                "0,0,0"
+            }
+        }
     }
-}
-
-// Error handling ?
-pub fn read_directory_contents(dir: &Path) -> Result<Vec<String>> {
-    let paths = fs::read_dir(dir).unwrap();
-
-    // let result = match paths {
-    //     Ok(contents) => paths
-    //         .unwrap()
-    //         .filter_map(|entry| {
-    //             entry.ok().and_then(|e| {
-    //                 e.path()
-    //                     .file_name()
-    //                     .and_then(|n| n.to_str().map(String::from))
-    //             })
-    //         })
-    //         .collect::<Vec<String>>(),
-    //     Err(error) => "oops",
-    // };
-
-    Ok(paths
-        .filter_map(|entry| {
-            entry.ok().and_then(|e| {
-                e.path()
-                    .with_extension("")
-                    .file_name()
-                    .and_then(|n| n.to_str().map(String::from))
-            })
-        })
-        .collect::<Vec<String>>())
 }
 
 pub fn help() -> &'static str {
