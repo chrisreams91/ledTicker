@@ -4,7 +4,6 @@
 extern crate rocket;
 
 use rocket::http::RawStr;
-use rocket::http::Status;
 
 use std::path::Path;
 use std::process::Command;
@@ -37,6 +36,7 @@ fn display_image(image: &RawStr, duration: &RawStr, powerrelay: Option<&RawStr>)
             );
 
             thread::spawn(move || {
+                println!("{}", command);
                 Command::new("sh").arg("-c").arg(command).spawn().unwrap();
                 if powerrelay {
                     gpio::power_relay_on_for(parsed_duration);
@@ -67,7 +67,7 @@ fn display_gif(gif: &RawStr, duration: &RawStr, powerrelay: Option<&RawStr>) -> 
         } else if valid_gif && valid_duration {
             BLOCKREQUESTS = true;
             let powerrelay = util::parse_powerrelay(powerrelay);
-            let parsed_duration = duration.as_str().parse().unwrap();
+            let parsed_duration = duration.as_str().parse::<u64>().unwrap();
 
             let base_command = format!(
                 "sudo timeout {} /home/pi/rpi-rgb-led-matrix/utils/led-image-viewer --led-slowdown-gpio=2",
@@ -76,40 +76,40 @@ fn display_gif(gif: &RawStr, duration: &RawStr, powerrelay: Option<&RawStr>) -> 
 
             // premade or allow request params to set all args
             let args = match gif.as_str() {
-                "partyparrot" => " --led-chain=1 --led-brightness=50 --led-rows=16 -C -D 50 /home/pi/gifs/partyparrot.gif",
-                "dumpsterfire" => " --led-chain=1 --led-brightness=50 --led-rows=16 -C /home/pi/gifs/dumpster.gif",
-                "flexparrot" => " --led-chain=3 --led-brightness=80 --led-rows=64 -C /home/pi/gifs/flexparrot.gif",
+                "partyparrot" => " --led-chain=1 --led-brightness=50 --led-rows=16 -C -D 60 /home/pi/gifs/partyparrot.gif",
+                "dumpsterfire" => " --led-chain=1 --led-brightness=50 --led-rows=16 -C /home/pi/gifs/dumpsterfire.gif",
+                "flexparrot" => " --led-chain=3 --led-brightness=100 --led-rows=64 -C /home/pi/gifs/flexparrot.gif",
                 "flexdumpster" => " --led-rows=16 -C --led-chain=3 /home/pi/gifs/flexdumpster.gif",
 
                 "bulbasaur" => " --led-chain=1 --led-brightness=50 --led-rows=32 /home/pi/gifs/bulbasaur.gif",
-                "charizard" => " --led-chain=3 --led-brightness=50 --led-rows=32 -C /home/pi/gifs/charizard.gif",
-                "cyndaquil" => " --led-chain=1 --led-brightness=40 --led-rows=32 -C /home/pi/gifs/cyndaquil.gif",
+                "charizard" => " --led-chain=3 --led-brightness=75 --led-rows=32 -C /home/pi/gifs/charizard.gif",
+                "cyndaquil" => " --led-chain=1 --led-brightness=60 --led-rows=32 -C /home/pi/gifs/cyndaquil.gif",
                 "ditto" => " --led-rows=32 -C --led-chain=1 --led-brightness=40 /home/pi/gifs/ditto.gif",
-                "flareon" => " --led-chain=1 --led-brightness=50 --led-rows=32 /home/pi/gifs/flareon.gif",
+                "flareon" => " --led-chain=1 --led-brightness=40 --led-rows=32 /home/pi/gifs/flareon.gif",
                 "jolteon" => " --led-chain=1 --led-brightness=40 --led-rows=32 /home/pi/gifs/jolteon.gif",
                 "magikarp" => " --led-chain=1 --led-brightness=40 --led-rows=32 -C /home/pi/gifs/magikarp.gif",
-                "pikafollow" => " --led-chain=1 --led-brightness=50 --led-rows=32 -C /home/pi/gifs/pikafollow.gif",
-                "pikarun" => " --led-chain=1 --led-brightness=50 --led-rows=32 -C /home/pi/gifs/pikarun.gif",
-                "tododile" => " --led-chain=1 --led-brightness=50 --led-rows=32 /home/pi/gifs/tododile.gif",
-                "vaporeon" => " --led-chain=1 --led-brightness=40 --led-rows=32 /home/pi/gifs/vaporeon.gif",
+                "pikafollow" => " --led-chain=1 --led-brightness=40 --led-rows=32 -C /home/pi/gifs/pikafollow.gif",
+                "pikarun" => " --led-chain=1 --led-brightness=40 --led-rows=32 -C /home/pi/gifs/pikarun.gif",
+                "tododile" => " --led-chain=1 --led-brightness=40 --led-rows=32 /home/pi/gifs/tododile.gif",
+                "vaporeon" => " --led-chain=1 --led-brightness=50 --led-rows=32 /home/pi/gifs/vaporeon.gif",
 
                 "pacman" => " --led-rows=64 -C --led-chain=3 /home/pi/gifs/pacman.gif",
                 "nyancat" => " --led-chain=3 --led-brightness=90 --led-rows=32 -C /home/pi/gifs/nyancat.gif",
                 "mariobananaBig" => " --led-rows=64 -C --led-chain=3 /home/pi/gifs/mariobanana.gif",
                 "mariobanana" => " --led-rows=32 -C --led-chain=1 /home/pi/gifs/mariobanana.gif",
-                "n64" => " --led-chain=1 --led-brightness=40 --led-rows=16 -C /home/pi/gifs/n64.gif",
-                _ => " --led-chain=1 --led-brightness=50 --led-rows=16 -C -D 50 /home/pi/gifs/partyparrot.gif"
+                "n64" => " --led-chain=1 --led-brightness=60 --led-rows=16 -C /home/pi/gifs/n64.gif",
+                _ => " --led-chain=1 --led-brightness=60 --led-rows=16 -C -D 50 /home/pi/gifs/partyparrot.gif"
             };
             let command = format!("{}{}", base_command, args);
 
-            // some gifs take longer than other to load set timeout?
+            // some gifs take longer than others to load added 1sec for load time
             thread::spawn(move || {
                 println!("{}", command);
-                Command::new("sh").arg("-c").arg(command).spawn();
+                Command::new("sh").arg("-c").arg(command).spawn().unwrap();
                 if powerrelay {
-                    gpio::power_relay_on_for(parsed_duration);
+                    gpio::power_relay_on_for(parsed_duration + 1);
                 } else {
-                    sleep(Duration::from_secs(parsed_duration));
+                    sleep(Duration::from_secs(parsed_duration + 1));
                 }
                 println!("requests no longer blocked");
                 BLOCKREQUESTS = false;
@@ -134,12 +134,13 @@ fn display_text(
     // speed: Option<&RawStr>
 ) -> &'static str {
     let valid_duration = duration.as_str().parse::<u64>().is_ok();
+    let valid_text = !text.as_str().is_empty();
 
     unsafe {
         if BLOCKREQUESTS {
             println!("requests are being blocked");
             "Display Text Failure :: Requests pending"
-        } else if valid_duration {
+        } else if valid_duration && valid_text {
             BLOCKREQUESTS = true;
             let powerrelay = util::parse_powerrelay(powerrelay);
             let parsed_duration = duration.as_str().parse().unwrap();
@@ -173,7 +174,8 @@ fn display_text(
             );
 
             thread::spawn(move || {
-                Command::new("sh").arg("-c").arg(command).spawn();
+                println!("{}", command);
+                Command::new("sh").arg("-c").arg(command).spawn().unwrap();
                 if powerrelay {
                     gpio::power_relay_on_for(parsed_duration);
                 } else {
@@ -196,13 +198,15 @@ fn help() -> &'static str {
 }
 
 //error handling ?
+// sort ?
 #[get("/<folder>")]
 fn get_folder_contents(folder: &RawStr) -> String {
     let path = Path::new(folder.as_str());
 
     match util::read_directory_contents(path) {
-        Ok(folder) => {
+        Ok(mut folder) => {
             let response = format!("Available {}: \n", path.to_str().unwrap());
+            folder.sort();
             response + &folder.join("\n")
         }
         Err(e) => {
@@ -212,7 +216,7 @@ fn get_folder_contents(folder: &RawStr) -> String {
     }
 }
 
-#[put("/powerrelay/on?<duration>")]
+#[put("/powerrelay/<duration>")]
 fn turn_power_relay_on(duration: &RawStr) -> &'static str {
     let valid_duration = duration.as_str().parse::<u64>().is_ok();
     unsafe {

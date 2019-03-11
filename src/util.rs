@@ -6,11 +6,6 @@ use rocket::http::RawStr;
 use std::fs;
 use std::io::Result;
 use std::path::Path;
-use std::process::Command;
-use std::sync::Arc;
-use std::thread;
-use std::thread::sleep;
-use std::time::Duration;
 use std::vec::Vec;
 
 pub fn parse_powerrelay(powerrelay: Option<&RawStr>) -> bool {
@@ -89,14 +84,21 @@ GET : /gifs = available gifs
 GET : /fonts = available fonts
 
 
-PUT : /<image>/<duration>?<powerrelay>
+PUT : /scrollimage/<image>/<duration>?<powerrelay>
 
-PUT : /scrolltext/<duration>&<text>?<powerrelay>&<color>&<backgroundcolor>&<outlinecolor>&<font>
+    ex: /scrollimage/dogeegod/30/?powerrelay=true
 
 PUT : /gif/<gif>/<duration>?<powerrelay>
 
-PUT : /powerrelay/on?<duration>
+    ex:  /gif/flexparrot/15
 
+PUT : /scrolltext/<duration>&<text>?<powerrelay>&<color>&<backgroundcolor>&<outlinecolor>&<font>
+
+    ex: /scrolltext/matt is a dum dum head /10?color=black&outlinecolor=orange
+
+PUT : /powerrelay/<duration>
+
+    ex: /powerrelay/30
 
 
 image / gif = file name, these need to be on the Pi so send them to me if you would like it available or you can put it on yourself. They must be in .ppm or .gif formats respectively
@@ -106,12 +108,13 @@ text = the actual text you want displayed, it will loop until the duration is ov
 duration = seconds
 
 
-Everything after the ? are optional parameters
-
+Everything after the ? are optional parameters and must be set by param=value 
+    ex powerrelay=true
 
 powerrelay = true to turn on party lights or whatever else is connected
 
-color / backgroundcolor / outlinecolor = Either a color string ex red blue green or a valid RGB value ex 255,255,255
+color / backgroundcolor / outlinecolor = Either a color string such as red blue green ( only a handful of commons ones will work ) 
+or a valid RGB value ex: 255,127,80
 
 font = font file name - like images it needs to be on Pi so send them to me if you would like more added other wise GET /fonts
 

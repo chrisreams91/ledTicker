@@ -5,6 +5,8 @@ use sysfs_gpio::{Direction, Pin};
 use std::thread::sleep;
 use std::time::Duration;
 
+// Not handling result on any of the pins to prevent panics - fix later
+
 pub fn power_relay_on_for(duration: u64) {
     let pin = Pin::new(21);
     pin.export();
