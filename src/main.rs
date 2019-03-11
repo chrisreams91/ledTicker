@@ -22,6 +22,7 @@ fn display_image(image: &RawStr, duration: &RawStr, powerrelay: Option<&RawStr>)
     let valid_duration = duration.as_str().parse::<u64>().is_ok();
 
     //https://rocket.rs/v0.4/guide/state/
+    //remove current global var for Atomic Bool managed by Rocket
     unsafe {
         if BLOCKREQUESTS {
             println!("requests are being blocked");
@@ -83,7 +84,7 @@ fn display_gif(gif: &RawStr, duration: &RawStr, powerrelay: Option<&RawStr>) -> 
 
                 "bulbasaur" => " --led-chain=1 --led-brightness=50 --led-rows=32 /home/pi/gifs/bulbasaur.gif",
                 "charizard" => " --led-chain=3 --led-brightness=75 --led-rows=32 -C /home/pi/gifs/charizard.gif",
-                "cyndaquil" => " --led-chain=1 --led-brightness=60 --led-rows=32 -C /home/pi/gifs/cyndaquil.gif",
+                "cyndaquil" => " --led-chain=1 --led-brightness=40 --led-rows=32 -C /home/pi/gifs/cyndaquil.gif",
                 "ditto" => " --led-rows=32 -C --led-chain=1 --led-brightness=40 /home/pi/gifs/ditto.gif",
                 "flareon" => " --led-chain=1 --led-brightness=40 --led-rows=32 /home/pi/gifs/flareon.gif",
                 "jolteon" => " --led-chain=1 --led-brightness=40 --led-rows=32 /home/pi/gifs/jolteon.gif",
@@ -96,7 +97,7 @@ fn display_gif(gif: &RawStr, duration: &RawStr, powerrelay: Option<&RawStr>) -> 
                 "pacman" => " --led-rows=64 -C --led-chain=3 /home/pi/gifs/pacman.gif",
                 "nyancat" => " --led-chain=3 --led-brightness=90 --led-rows=32 -C /home/pi/gifs/nyancat.gif",
                 "mariobananaBig" => " --led-rows=64 -C --led-chain=3 /home/pi/gifs/mariobanana.gif",
-                "mariobanana" => " --led-rows=32 -C --led-chain=1 /home/pi/gifs/mariobanana.gif",
+                "mariobanana" => " --led-rows=32 -C --led-brightness=50 --led-chain=1 /home/pi/gifs/mariobanana.gif",
                 "n64" => " --led-chain=1 --led-brightness=60 --led-rows=16 -C /home/pi/gifs/n64.gif",
                 _ => " --led-chain=1 --led-brightness=60 --led-rows=16 -C -D 50 /home/pi/gifs/partyparrot.gif"
             };
@@ -133,6 +134,7 @@ fn display_text(
     powerrelay: Option<&RawStr>,
     // speed: Option<&RawStr>
 ) -> &'static str {
+    // maybe add scroll speed later
     let valid_duration = duration.as_str().parse::<u64>().is_ok();
     let valid_text = !text.as_str().is_empty();
 
@@ -197,8 +199,6 @@ fn help() -> &'static str {
     util::help()
 }
 
-//error handling ?
-// sort ?
 #[get("/<folder>")]
 fn get_folder_contents(folder: &RawStr) -> String {
     let path = Path::new(folder.as_str());
