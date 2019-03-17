@@ -45,21 +45,21 @@ EOF
 
 ### Mac to vagrant 
 
-vagrant scp /Users/chris/Documents/Code/ledTicker :/home/vagrant/ledTicker
+vagrant scp your/path/to/ledTicker :/home/vagrant/ledTicker
 
 cargo build --target=armv7-unknown-linux-gnueabihf —release
 
 
 ### Binary from VM to pi 
 
-sftp pi@192.168.1.133 ( from VM )
+sftp pi@192.whatever.the.ip.is
 
-put /home/vagrant/ledTicker/target/armv7-unknown-linux-gnueabihf/release/ledTicker /home/pi/ledTickerAndLights
+put /home/vagrant/ledTicker/target/armv7-unknown-linux-gnueabihf/release/ledTicker /home/pi/ledTicker
 
 
 ### - images / gifs / fonts
 
-sftp pi@192.168.1.133
+sftp pi@192.whatever.the.ip.is
 
 put /Your/path/to/file/ /home/pi/(gifs/images/fonts)
 
