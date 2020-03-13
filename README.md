@@ -1,7 +1,6 @@
-# VM setup
+# Building the Binary 
 
-### Vagrant setup
-
+### Setting up the Vagrant VM
 
 vagrant init debian/stretch64
 
@@ -12,7 +11,7 @@ vagrant ssh
 sudo apt update
 sudo apt upgrade
 
-### Install Rust 
+### Install Rust to the VM
 
 sudo apt install gcc
 
@@ -28,7 +27,7 @@ sudo apt-get install -qq gcc-arm-linux-gnueabihf
 
 rustup target add armv7-unknown-linux-gnueabihf
 
-### Config cargo for cross compile 
+### Config cargo to compile for the Pi
 
 mkdir -p ~/.cargo
 
