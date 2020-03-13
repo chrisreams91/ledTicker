@@ -1,4 +1,4 @@
-![](partyParrotsFlex.gif)
+![](partyParrotFlex.gif)
 
 # Building the Binary 
 
