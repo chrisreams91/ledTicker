@@ -1,3 +1,5 @@
+![](partyParrotsFlex.gif)
+
 # Building the Binary 
 
 ### Setting up the Vagrant VM
